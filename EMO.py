@@ -278,7 +278,7 @@ class Low_Voltage_System():
         line_impedance = GLO_grid_params['line impedance']
         i_max_line = GLO_grid_params['i line max']
         # assume all lines to be 15m for calculating R/l
-        r_spec = line_impedance/15/1000 # /1000 since pandas expects length in km
+        r_spec = line_impedance*1000/15 # /1000 since pandas expects length in km
 
         if ideal:
             vkr = 0
@@ -306,6 +306,8 @@ class Low_Voltage_System():
         # create all the other busses
         for i in range(2, len(grid_data['Lines'])):
             pp.create_bus(grid, name='bus'+str(i), vn_kv=0.4)
+            if grid_data['Busses'].loc[i, 'Household'] == 'Yes':
+                pp.create_load(grid, bus=i, p_mw=0, name='Load at bus'+str(i))
 
         # create all the lines
         for i in range(3, len(grid_data['Lines'])):
@@ -376,8 +378,8 @@ class Simulation_Handler():
     def run_sim(self, voltage_control=False):  # main loop for timeseries sim
         
         for self.frame in range(1, self.end_minute - self.start_minute - 1):
-            
-            if self.frame / 100 == round(self.frame / 100):
+            #if self.frame / 100 == round(self.frame / 100):
+            if self.frame % 100 == 0:
                 print("Iteration no. "+ str(self.frame)+ " of "+ str(self.end_minute - self.start_minute))
             
             self.set_loads(voltage_control)
@@ -421,8 +423,8 @@ class Simulation_Handler():
 # MAIN-Routine==================================================================================================
 if __name__ == '__main__':
     #grid_name='Example_Grid'
-    #grid_name='Example_Grid_Simple'
-    grid_name='selfmade_grid'
+    grid_name='Example_Grid_Simple'
+    #grid_name='selfmade_grid'
 
     #grid_name='Example_Grid_Current_Estimation'
 
@@ -441,7 +443,7 @@ if __name__ == '__main__':
         system_1 = Low_Voltage_System(line_type='NAYY 4x120 SE',transformer_type="0.25 MVA 10/0.4 kV")
         system_1.panda_grid = system_1.make_system_from_excel_file(file=excel_file)
         system_1.grid_from_GLO('grids/selfmade_grid.xlsx', {'S transformer': 240,
-                                                            'line impedance': 0.04,
+                                                            'line impedance': 0.004,
                                                             'i line max': 140
                                                             })
         # simulate uncontrolled system:
