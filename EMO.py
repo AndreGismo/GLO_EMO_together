@@ -327,8 +327,9 @@ class Simulation_Handler():
         self.results = {}    # logged as a dict so it can easily be pickled, to be used e.g. in Topology Estimator
         self.start_minute = start_minute
         self.end_minute = end_minute
-        self.rapid=rapid 
-        self.create_timelines(self.rapid)  # timelines for households from .mat-file
+        self.rapid=rapid
+        # uncomment for data loading from GLO
+        #self.create_timelines(self.rapid)  # timelines for households from .mat-file
         
     def create_timelines(self,rapid):
         if rapid:
@@ -414,7 +415,25 @@ class Simulation_Handler():
         self.results['Y']        = PSL.get_Y(self.system.panda_grid)
         
         print("Simulation finished (voltage controls="+str(voltage_control)+', rapid='+str(self.rapid)+')')
-    
+
+
+    def run_GLO_sim(self, household_data, wallbox_data, timesteps):
+        for step in range(timesteps):
+            # set household loads
+            for bus in self.system.grid.load.index:
+                self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step]
+
+            # add wallbox loads (current*voltage(assumed))
+            for wallbox_bus in wallbox_data.keys():
+                self.system.grid.load.loc[wallbox_bus, 'p_mw'] += wallbox_data[wallbox_bus][step]
+
+            # all loads set => start simulation
+            pp.runpp(self.system.grid)
+
+            # store results
+
+
+
     def plot_powers(self):
         for bus_no in range(len(sim_handler_1.results['S'][0])):
             PSL.plot_list([sim_handler_1.results['S'][frame][bus_no] for frame in range(len(sim_handler_1.results['S']))],
