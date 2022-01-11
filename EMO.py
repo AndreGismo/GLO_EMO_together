@@ -6,9 +6,18 @@ Module Electrics Management and Optimization (EMO)
 Created August 2020
 
 @author: Hotz
+00==============================================
+Erweitert von André Ulrich für die Masterarbeit
+Zusammenspiel von GLO und EMO
+What has to be done:
+- create grid according to GLO
+- pass the household load profiles to GLO
+  (then GLO calculates optmized wallbox currents)
+- receive the optimized wallbox currents from GLO
 """
 
 #plt.rcParams['figure.dpi'] = 300
+import pandas as pd
 
 if True:  # Import
     import pandapower as pp          # grid calculation tool
@@ -250,6 +259,17 @@ class Low_Voltage_System():
         pp.create_transformer(grid, 0, 1, name="Transformator", std_type=self.transformer_type)
         return grid
 
+    def grid_from_GLO(self, GLO_grid_file):
+        """
+        reads in the GLO_grid_file (which contains the information about the
+        grid the GLO is optimizing for) and turns it into a pandapower grid
+        :param GLO_grid_file: csv-file
+        :return: None
+        """
+        data = pd.read_csv(GLO_grid_file)
+
+
+
 #
 class Simulation_Handler():  
     # executes timeseries sim step by step, logs results, handles global voltage-power-controller
@@ -354,12 +374,12 @@ class Simulation_Handler():
 # MAIN-Routine==================================================================================================
 if __name__ == '__main__':
     #grid_name='Example_Grid'
-    grid_name='Example_Grid_Simple'
-    #grid_name='
+    #grid_name='Example_Grid_Simple'
+    grid_name='selfmade_grid'
 
     #grid_name='Example_Grid_Current_Estimation'
 
-    excel_file='Grids/'+grid_name+'.xlsx'
+    excel_file='grids/'+grid_name+'.xlsx'
     save_file='sav/'+grid_name+'.pic'
     results_dict_file='sav/'+grid_name+'_results.pic'
     household_load_file="zeitreihen/Verbrauchsdaten_IOW"
