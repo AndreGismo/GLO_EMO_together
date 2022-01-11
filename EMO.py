@@ -183,7 +183,9 @@ class Low_Voltage_System():
         self.line_type=line_type
         self.transformer_type=transformer_type
         self.max_bus_power=35
-        
+        self.grid = None
+
+
     def make_system_from_excel_file(self, file):
         # read stuff from Excel file and format
         lines=pandas.read_excel(file, sheet_name="Lines")
@@ -259,14 +261,59 @@ class Low_Voltage_System():
         pp.create_transformer(grid, 0, 1, name="Transformator", std_type=self.transformer_type)
         return grid
 
-    def grid_from_GLO(self, GLO_grid_file):
+
+    def grid_from_GLO(self, GLO_grid_file, GLO_grid_params, ideal=True):
         """
         reads in the GLO_grid_file (which contains the information about the
         grid the GLO is optimizing for) and turns it into a pandapower grid
-        :param GLO_grid_file: csv-file
+        set as attribute of class
+        :param GLO_grid_file: excel-file
         :return: None
         """
-        data = pd.read_csv(GLO_grid_file)
+        grid_data = pd.read_excel(GLO_grid_file, sheet_name=['Lines', 'Busses'])
+        #buses = pd.read_excel(GLO_grid_file, sheet_name='Busses')
+        v_mv = 20
+        v_lv = 0.4
+        s_trafo = GLO_grid_params['S transformer']
+        line_impedance = GLO_grid_params['line impedance']
+        i_max_line = GLO_grid_params['i line max']
+        # assume all lines to be 15m for calculating R/l
+        r_spec = line_impedance/15/1000 # /1000 since pandas expects length in km
+
+        if ideal:
+            vkr = 0
+            pfe = 0
+            i0 = 0
+            vk = 0
+
+        else:
+            vkr = 1.5
+            pfe = 0.4
+            i0 = 0.4
+            vk = 6
+
+        # empty grid
+        grid = pp.create_empty_network()
+        # buses for attaching the transformer
+        pp.create_bus(grid, name='transformer mv', vn_kv=v_mv)
+        pp.create_bus(grid, name='transformer lv', vn_kv=v_lv)
+        # create transformer
+        pp.create_transformer_from_parameters(grid, hv_bus=0, lv_bus=1, sn_mva=s_trafo/1000,
+                                              vn_hv_kv=v_mv, vn_lv_kv=v_lv, vkr_percent=vkr,
+                                              pfe_kw=pfe, i0_percent=i0, vk_percent=vk)
+        # slack
+        pp.create_ext_grid(grid, bus=0)
+        # create all the other busses
+        for i in range(2, len(grid_data['Lines'])):
+            pp.create_bus(grid, name='bus'+str(i), vn_kv=0.4)
+
+        # create all the lines
+        for i in range(3, len(grid_data['Lines'])):
+            pp.create_line_from_parameters(grid, from_bus=i-1, to_bus=i, length_km=0.015,
+                                           r_ohm_per_km=r_spec, name='line '+str(i-1)+'-'+str(i),
+                                           x_ohm_per_km=0, c_nf_per_km=0, max_i_ka=i_max_line)
+
+        self.grid = grid
 
 
 
@@ -393,6 +440,10 @@ if __name__ == '__main__':
     if True:  # Simulation rather than loading from file
         system_1 = Low_Voltage_System(line_type='NAYY 4x120 SE',transformer_type="0.25 MVA 10/0.4 kV")
         system_1.panda_grid = system_1.make_system_from_excel_file(file=excel_file)
+        system_1.grid_from_GLO('grids/selfmade_grid.xlsx', {'S transformer': 240,
+                                                            'line impedance': 0.04,
+                                                            'i line max': 140
+                                                            })
         # simulate uncontrolled system:
         sim_handler_1 = Simulation_Handler(system_1,
                                            start_minute=60 * 12,
