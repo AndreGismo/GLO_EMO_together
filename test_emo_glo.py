@@ -53,7 +53,7 @@ test.run_optimization_single_timestep(tee=True)
 # export grid as excel
 grid_excel_file = 'optimized_grid'
 test.export_grid(grid_excel_file)
-grid_specs = test.get_grid_specs
+grid_specs = test.get_grid_specs()
 hh_data = test.export_household_profiles()
 wb_data = test.export_I_results()
 
@@ -66,4 +66,4 @@ sim_handler_1 = Simulation_Handler(system_1,
                                     end_minute=60 * 12 + 24 * 60,
                                     rapid=False)
 
-sim_handler_1.run_GLO_sim(hh_data, wb_data, resolution*60/resolution)
+sim_handler_1.run_GLO_sim(hh_data, wb_data, int(resolution*60/resolution))

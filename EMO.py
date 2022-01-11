@@ -304,13 +304,13 @@ class Low_Voltage_System():
         # slack
         pp.create_ext_grid(grid, bus=0)
         # create all the other busses
-        for i in range(2, len(grid_data['Lines'])):
+        for i in range(2, len(grid_data['Lines'])+2): #+2
             pp.create_bus(grid, name='bus'+str(i), vn_kv=0.4)
             if grid_data['Busses'].loc[i, 'Household'] == 'Yes':
                 pp.create_load(grid, bus=i, p_mw=0, name='Load at bus'+str(i))
 
         # create all the lines
-        for i in range(3, len(grid_data['Lines'])):
+        for i in range(3, len(grid_data['Lines'])+2):
             pp.create_line_from_parameters(grid, from_bus=i-1, to_bus=i, length_km=0.015,
                                            r_ohm_per_km=r_spec, name='line '+str(i-1)+'-'+str(i),
                                            x_ohm_per_km=0, c_nf_per_km=0, max_i_ka=i_max_line)
@@ -421,14 +421,14 @@ class Simulation_Handler():
         for step in range(timesteps):
             # set household loads
             for bus in self.system.grid.load.index:
-                self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step]
+                self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step] * 1e-6
 
             # add wallbox loads (current*voltage(assumed))
             for wallbox_bus in wallbox_data.keys():
-                self.system.grid.load.loc[wallbox_bus, 'p_mw'] += wallbox_data[wallbox_bus][step]
+                self.system.grid.load.loc[wallbox_bus, 'p_mw'] += wallbox_data[wallbox_bus][step] *400*1e-6
 
             # all loads set => start simulation
-            pp.runpp(self.system.grid)
+            pp.runpp(self.system.grid, max_iterations=30)
 
             # store results
 
