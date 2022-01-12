@@ -33,6 +33,7 @@ if True:  # Import
     import sys
     #sys.path.append('C:/Users/Hotz/Dropbox/Weitere/Programmierung')
     import PSL
+    from matplotlib import pyplot as plt
     
     
 class Household(): 
@@ -453,7 +454,35 @@ class Simulation_Handler():
             self.res_GLO_sim['trafo'].append(self.system.grid.res_trafo.loc[0, 'loading_percent'])
 
 
+    def plot_EMO_sim_results(self, freq, element='buses'):
+        fig, ax = plt.subplots(1, 1, figsize=(15, 7))
+        length = len(self.res_GLO_sim['trafo'])
+        date_range = pd.date_range(start='2022', freq=str(freq)+'min', periods=length)
+        if element == 'buses':
+            for elm_nr in self.res_GLO_sim[element]:
+                ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Spannung an Bus {}'.format(elm_nr-1),
+                         marker='o')
+                ax.set_ylabel('Knotenspannung [V]')
+                ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.grid()
+            ax.legend()
 
+        elif element == 'lines':
+            for elm_nr in self.res_GLO_sim[element]:
+                ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Auslastung von Leitung {}'.format(elm_nr),
+                         marker='o')
+                ax.set_ylabel('Auslastung [%]')
+                ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.grid()
+            ax.legend()
+
+        elif element == 'trafo':
+            ax.plot(date_range, self.res_GLO_sim[element], label='Auslastung des Transformators',
+                     marker='o')
+            ax.set_ylabel('Auslastung [%]')
+            ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.grid()
+            ax.legend()
 
 
 

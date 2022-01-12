@@ -68,3 +68,6 @@ sim_handler_1 = Simulation_Handler(system_1,
                                     rapid=False)
 
 sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
+sim_handler_1.plot_EMO_sim_results(freq=resolution, element='buses')
+sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
+sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
