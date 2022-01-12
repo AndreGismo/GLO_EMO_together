@@ -42,13 +42,14 @@ for car in bev_lst:
 household_list = []
 for bus in bus_lst:
     household = HH(home_bus=bus, annual_demand=ann_dems[bus], resolution=resolution)
-    household.raise_demand(11, 19, 23500)
+    #household.raise_demand(11, 19, 23500)
     household_list.append(household)
 
 test = GLO(number_buses=buses, bevs=bev_list, resolution=resolution, s_trafo_kVA=s_trafo,
            households=household_list, horizon_width=24)
 
 test.run_optimization_single_timestep(tee=True)
+test.plot_results(marker='o')
 
 # export grid as excel
 grid_excel_file = 'optimized_grid'
@@ -66,4 +67,4 @@ sim_handler_1 = Simulation_Handler(system_1,
                                     end_minute=60 * 12 + 24 * 60,
                                     rapid=False)
 
-sim_handler_1.run_GLO_sim(hh_data, wb_data, int(resolution*60/resolution))
+sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))

@@ -263,7 +263,7 @@ class Low_Voltage_System():
 
 
     def grid_from_GLO(self, GLO_grid_file, GLO_grid_params, ideal=True):
-        """
+        """ By André
         reads in the GLO_grid_file (which contains the information about the
         grid the GLO is optimizing for) and turns it into a pandapower grid
         set as attribute of class
@@ -418,6 +418,18 @@ class Simulation_Handler():
 
 
     def run_GLO_sim(self, household_data, wallbox_data, timesteps):
+        """ By André
+        runs a simulation according to the data and grid the GLO was optimizing for
+        and stores results (line loading, bus voltage, transformer loading) as an
+        attribut of the class, ready to be plotted.
+        :param household_data:
+        :param wallbox_data:
+        :param timesteps:
+        :return: None
+        """
+        self.res_GLO_sim = {'buses': {i: [] for i in self.system.grid.bus.index if i > 1},
+                            'lines': {i: [] for i in self.system.grid.line.index},
+                            'trafo': []}
         for step in range(timesteps):
             # set household loads
             for bus in self.system.grid.load.index:
@@ -431,7 +443,17 @@ class Simulation_Handler():
             pp.runpp(self.system.grid, max_iterations=30)
 
             # store results
-            
+            for line_nr in self.system.grid.line.index:
+                self.res_GLO_sim['lines'][line_nr].append(self.system.grid.res_line.loc[line_nr, 'loading_percent'])
+
+            for bus_nr in self.system.grid.bus.index:
+                if bus_nr > 1: # skip first two buses
+                    self.res_GLO_sim['buses'][bus_nr].append(self.system.grid.res_bus.loc[bus_nr, 'vm_pu']*400)
+
+            self.res_GLO_sim['trafo'].append(self.system.grid.res_trafo.loc[0, 'loading_percent'])
+
+
+
 
 
 
