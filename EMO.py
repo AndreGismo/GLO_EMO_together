@@ -284,7 +284,7 @@ class Low_Voltage_System():
             vkr = 0
             pfe = 0
             i0 = 0
-            vk = 0
+            vk = 1
 
         else:
             vkr = 1.5
@@ -310,7 +310,7 @@ class Low_Voltage_System():
                 pp.create_load(grid, bus=i, p_mw=0, name='Load at bus'+str(i))
 
         # create all the lines
-        for i in range(3, len(grid_data['Lines'])+2):
+        for i in range(2, len(grid_data['Lines'])+2):
             pp.create_line_from_parameters(grid, from_bus=i-1, to_bus=i, length_km=0.015,
                                            r_ohm_per_km=r_spec, name='line '+str(i-1)+'-'+str(i),
                                            x_ohm_per_km=0, c_nf_per_km=0, max_i_ka=i_max_line)
@@ -431,6 +431,7 @@ class Simulation_Handler():
             pp.runpp(self.system.grid, max_iterations=30)
 
             # store results
+            
 
 
 
