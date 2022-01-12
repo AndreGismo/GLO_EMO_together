@@ -462,8 +462,9 @@ class Simulation_Handler():
             for elm_nr in self.res_GLO_sim[element]:
                 ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Spannung an Bus {}'.format(elm_nr-1),
                          marker='o')
-                ax.set_ylabel('Knotenspannung [V]')
-                ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.set_ylabel('Knotenspannung [V]')
+            ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.set_title('Knotenspannungen über der Zeit')
             ax.grid()
             ax.legend()
 
@@ -471,18 +472,19 @@ class Simulation_Handler():
             for elm_nr in self.res_GLO_sim[element]:
                 ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Auslastung von Leitung {}'.format(elm_nr),
                          marker='o')
-                ax.set_ylabel('Auslastung [%]')
-                ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.set_ylabel('Auslastung [%]')
+            ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.set_title('Auslastung der Leitungen über der Zeit')
             ax.grid()
             ax.legend()
 
         elif element == 'trafo':
-            ax.plot(date_range, self.res_GLO_sim[element], label='Auslastung des Transformators',
-                     marker='o')
+            ax.plot(date_range, self.res_GLO_sim[element], marker='o')
             ax.set_ylabel('Auslastung [%]')
             ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            ax.set_title('Auslastung des Transformators über der Zeit')
             ax.grid()
-            ax.legend()
+            #ax.legend()
 
 
 
