@@ -2,16 +2,22 @@
 Author: André Ulrich
 Test parallelization of GLO and EMO
 """
+import os
 
 from EMO import *
 from optimization import GridLineOptimizer as GLO
 from battery_electric_vehicle import BatteryElectricVehicle as BEV
 from household import Household as HH
 
+from matplotlib import pyplot as plt
 import matplotlib.pyplot as plt
 import multiprocessing as mp
+import os
+import time
 
-#### GridLineOptimizer ####################################################
+CPUS = os.cpu_count()
+
+#### GridLineOptimizer ########################################################
 resolution = 15
 buses = 6
 bevs = 6
@@ -49,17 +55,15 @@ for bus in bus_lst:
 test = GLO(number_buses=buses, bevs=bev_list, resolution=resolution, s_trafo_kVA=s_trafo,
            households=household_list, horizon_width=24)
 
-test.run_optimization_single_timestep(tee=True)
-test.plot_results(marker='o')
-
 # export grid as excel
 grid_excel_file = 'optimized_grid'
 test.export_grid(grid_excel_file)
 grid_specs = test.get_grid_specs()
 hh_data = test.export_household_profiles()
-wb_data = test.export_I_results()
+#wb_data = test.export_I_results() erst nach Optimierung sinnvoll! sonst nur None
 
 
+#### EMO ######################################################################
 system_1 = Low_Voltage_System(line_type='NAYY 4x120 SE',transformer_type="0.25 MVA 10/0.4 kV")
 system_1.grid_from_GLO('grids/optimized_grid.xlsx', grid_specs)
 
@@ -68,5 +72,35 @@ sim_handler_1 = Simulation_Handler(system_1,
                                     end_minute=60 * 12 + 24 * 60,
                                     rapid=False)
 
+lock = mp.Lock()
+queue = mp.Queue()
+
+#func = test.run_optimization_single_timestep
+def func_opt(tee, marker, queue, lock):
+    with lock as l:
+        test.run_optimization_single_timestep(tee=tee)
+        test.plot_results(marker=marker)
+        I_res = test.export_I_results()
+        queue.put(I_res)
+
+
+def func_sim(queue, lock):
+    with lock as l:
+        wb_data = queue.get()
+        sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
+        sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
+        sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
+        sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
+        plt.show()
+
+
+
 if __name__ == '__main__':
-    
+    p_opt = mp.Process(target=func_opt, kwargs={'tee': True, 'marker': 'x', 'queue': queue, 'lock': lock})
+    p_sim = mp.Process(target=func_sim, args=(queue, lock))
+    p_opt.start()
+    time.sleep(3)
+    p_sim.start()
+    p_opt.join()
+    p_sim.join()
+    print('done!')
