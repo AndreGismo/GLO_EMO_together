@@ -64,7 +64,7 @@ hh_data = test.export_household_profiles()
 
 
 #### EMO ######################################################################
-system_1 = Low_Voltage_System(line_type='NAYY 4x120 SE',transformer_type="0.25 MVA 10/0.4 kV")
+system_1 = Low_Voltage_System(line_type='NAYY 4x120 SE', transformer_type="0.25 MVA 10/0.4 kV")
 system_1.grid_from_GLO('grids/optimized_grid.xlsx', grid_specs)
 
 sim_handler_1 = Simulation_Handler(system_1,
@@ -79,9 +79,10 @@ queue = mp.Queue()
 def func_opt(tee, marker, queue, lock):
     with lock as l:
         test.run_optimization_single_timestep(tee=tee)
-        test.plot_results(marker=marker)
         I_res = test.export_I_results()
         queue.put(I_res)
+
+    test.plot_results(marker=marker)
 
 
 def func_sim(queue, lock):
