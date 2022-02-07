@@ -25,6 +25,8 @@ bev_lst = list(range(bevs))
 bus_lst = list(range(buses))
 s_trafo = 150  #kVA
 
+t_steps = 96
+
 # BEVs
 home_buses = [0, 1, 2, 3, 4, 5]
 start_socs = [20, 20, 30, 20, 25, 40]
@@ -77,27 +79,33 @@ queue = mp.Queue()
 
 #func = test.run_optimization_single_timestep
 def func_opt(tee, marker, queue, lock):
-    with lock as l:
-        test.run_optimization_single_timestep(tee=tee)
-        I_res = test.export_I_results()
-        queue.put(I_res)
+    for t in range(t_steps):
+        with lock as l:
+            test.run_optimization_single_timestep(tee=tee)
+            I_res = test.export_I_results()
+            queue.put(I_res)
+            test._store_results()
+            test._prepare_next_timestep()
+            test._setup_model()
+        time.sleep(0.1)
 
-    test.plot_results(marker=marker)
+    #test.plot_results(marker=marker)
 
 
 def func_sim(queue, lock):
-    with lock as l:
-        wb_data = queue.get()
-        sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
-        sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
-        sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
-        sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
-        plt.show()
+    for t in range(t_steps):
+        with lock as l:
+            wb_data = queue.get()
+            sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
+            #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
+            #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
+            #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
+            #plt.show()
 
 
 
 if __name__ == '__main__':
-    p_opt = mp.Process(target=func_opt, kwargs={'tee': True, 'marker': 'x', 'queue': queue, 'lock': lock})
+    p_opt = mp.Process(target=func_opt, kwargs={'tee': False, 'marker': 'x', 'queue': queue, 'lock': lock})
     p_sim = mp.Process(target=func_sim, args=(queue, lock))
     p_opt.start()
     time.sleep(3)
