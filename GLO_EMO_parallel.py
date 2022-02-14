@@ -74,41 +74,44 @@ sim_handler_1 = Simulation_Handler(system_1,
                                     end_minute=60 * 12 + 24 * 60,
                                     rapid=False)
 
-lock = mp.Lock()
 queue = mp.Queue()
 
 #func = test.run_optimization_single_timestep
-def func_opt(tee, marker, queue, lock):
+def func_opt(tee, marker, queue):
     for t in range(t_steps):
-        with lock as l:
-            test.run_optimization_single_timestep(tee=tee)
-            I_res = test.export_I_results()
-            queue.put(I_res)
-            test._store_results()
-            test._prepare_next_timestep()
-            test._setup_model()
-        time.sleep(0.1)
+        test.run_optimization_single_timestep(tee=tee)
+        I_res = test.export_I_results()
+        queue.put(I_res)
+        test._store_results()
+        test._prepare_next_timestep()
+        test._setup_model()
+        #time.sleep(0.1)
 
     #test.plot_results(marker=marker)
 
 
-def func_sim(queue, lock):
+def func_sim(queue):
     for t in range(t_steps):
-        with lock as l:
-            wb_data = queue.get()
-            sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
-            #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
-            #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
-            #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
-            #plt.show()
+        wb_data = queue.get()
+        sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
+        #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
+        #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
+        #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
+        #plt.show()
 
 
 
 if __name__ == '__main__':
-    p_opt = mp.Process(target=func_opt, kwargs={'tee': False, 'marker': 'x', 'queue': queue, 'lock': lock})
-    p_sim = mp.Process(target=func_sim, args=(queue, lock))
+    p_opt = mp.Process(target=func_opt, kwargs={'tee': False, 'marker': 'x', 'queue': queue})
+    p_sim = mp.Process(target=func_sim, args=(queue,))
     p_opt.start()
-    time.sleep(3)
+    while True:
+        time.sleep(0.1)
+        # immer erst schauen, ob das erste Ergebnis der Optimierung da ist ...
+        if not queue.empty():
+            break
+
+    # ... erst dann die Simulation starten
     p_sim.start()
     p_opt.join()
     p_sim.join()
