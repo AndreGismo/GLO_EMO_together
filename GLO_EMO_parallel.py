@@ -82,6 +82,7 @@ queue = mp.Queue()
 #func = test.run_optimization_single_timestep
 def func_opt(tee, marker, queue):
     pid = os.getpid()
+    global t_counter
     for t in range(t_steps):
         print('optimization round', t, 'running in process', pid)
         test.run_optimization_single_timestep(tee=tee)
@@ -91,7 +92,10 @@ def func_opt(tee, marker, queue):
         test._store_results()
         test._prepare_next_timestep()
         test._setup_model()
+        #t_counter += 1 # is ja eigener Prozess, sieht die global t_counter von main gar nicht!
         time.sleep(3)
+
+    queue.put('done')
 
     #test.plot_results(marker=marker)
 
@@ -121,10 +125,10 @@ def func_sim(queue):
         else:
             print('received new results!')
             last_I_res = res_I
-            t_counter += 1
+            #t_counter += 1
             print(t_counter)
 
-        if t_counter == t_steps:
+        if res_I == 'done':
             break
 
         # run simulation with only the results for the first timestep
