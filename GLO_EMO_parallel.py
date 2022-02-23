@@ -12,6 +12,7 @@ from household import Household as HH
 from matplotlib import pyplot as plt
 import matplotlib.pyplot as plt
 import multiprocessing as mp
+import threading as thr
 import os
 import time
 
@@ -33,7 +34,7 @@ t_counter = 0
 home_buses = [0, 1, 2, 3, 4, 5]
 start_socs = [20, 20, 30, 20, 25, 40]
 target_socs = [80, 70, 80, 90, 80, 70]
-target_times = [10, 16, 18, 18, 17, 20]
+target_times = [10, 16, 18, 18, 17, 18]
 start_times = [2, 2, 2, 2, 2, 2]
 bat_energies = [50, 50, 50, 50, 50, 50]
 
@@ -82,33 +83,53 @@ queue = mp.Queue()
 def func_opt(tee, marker, queue):
     pid = os.getpid()
     for t in range(t_steps):
-        print('optimization running in process', pid)
+        print('optimization round', t, 'running in process', pid)
         test.run_optimization_single_timestep(tee=tee)
         I_res = test.export_I_results()
-        queue.put(I_res, block=False)
+        print(I_res)
+        queue.put(I_res) # vielleicht ohne block?
         test._store_results()
         test._prepare_next_timestep()
         test._setup_model()
-        #time.sleep(0.1)
+        time.sleep(3)
 
     #test.plot_results(marker=marker)
 
 
 def func_sim(queue):
     pid = os.getpid()
-    # runs faster than optimization, so dont used fixed number => while true
-    #for t in range(t_steps):
+    global t_counter
+
+    # function to be run in own thread, to get the data (I_res) out of the
+    # queue
+    def monitor_queue():
+        nonlocal queue, res_I
+        while True:
+            res_I = queue.get()
+
+    # first run optimization for first timestep to have results
+    test.run_optimization_single_timestep(tee=False)
+    res_I = test.export_I_results()
+
+    last_I_res = res_I
+    # start the thread to monitor the queue
+    thr.Thread(target=monitor_queue, daemon=True).start()
+
     while True:
-        print('simulation running in process', pid)
-        try:
-            wb_data = queue.get(block=False)
+        if res_I == last_I_res:
+            print('no new results, will continue with the old one')
+        else:
+            print('received new results!')
+            last_I_res = res_I
             t_counter += 1
-            print('#########################################')
-        except:
-            print('no new data, will use old')
-        # eigentlich nur mit den ergebnissen des ersten timestep vom aktuellen
-        # horizont
-        sim_handler_1.run_GLO_sim(hh_data, wb_data, timesteps=1)
+            print(t_counter)
+
+        if t_counter == t_steps:
+            break
+
+        # run simulation with only the results for the first timestep
+        sim_handler_1.run_GLO_sim(hh_data, res_I, timesteps=1)
+        time.sleep(1)
         #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
         #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
         #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
@@ -117,17 +138,9 @@ def func_sim(queue):
 
 
 if __name__ == '__main__':
-    p_opt = mp.Process(target=func_opt, kwargs={'tee': False, 'marker': 'x', 'queue': queue})
-    p_sim = mp.Process(target=func_sim, args=(queue,))
+    p_opt = mp.Process(target=func_opt, kwargs={'tee': False, 'marker': 'x', 'queue': queue}, daemon=True)
     p_opt.start()
-    # while True:
-    #     #time.sleep(0.1)
-    #     # erst mal schauen, ob das erste Ergebnis der Optimierung da ist ...
-    #     if not queue.empty():
-    #         break
+    func_sim(queue)
 
-    # ... erst dann die Simulation starten
-    p_sim.start()
     p_opt.join()
-    p_sim.join()
     print('done!')
