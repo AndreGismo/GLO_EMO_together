@@ -11,7 +11,7 @@ from household import Household as HH
 import matplotlib.pyplot as plt
 
 #### GridLineOptimizer ####################################################
-resolution = 15
+resolution = 10
 buses = 6
 bevs = 6
 bev_lst = list(range(bevs))

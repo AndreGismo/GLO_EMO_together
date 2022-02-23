@@ -27,6 +27,8 @@ s_trafo = 150  #kVA
 
 t_steps = 96
 
+t_counter = 0
+
 # BEVs
 home_buses = [0, 1, 2, 3, 4, 5]
 start_socs = [20, 20, 30, 20, 25, 40]
@@ -74,41 +76,57 @@ sim_handler_1 = Simulation_Handler(system_1,
                                     end_minute=60 * 12 + 24 * 60,
                                     rapid=False)
 
-lock = mp.Lock()
 queue = mp.Queue()
 
 #func = test.run_optimization_single_timestep
-def func_opt(tee, marker, queue, lock):
+def func_opt(tee, marker, queue):
+    pid = os.getpid()
     for t in range(t_steps):
-        with lock as l:
-            test.run_optimization_single_timestep(tee=tee)
-            I_res = test.export_I_results()
-            queue.put(I_res)
-            test._store_results()
-            test._prepare_next_timestep()
-            test._setup_model()
-        time.sleep(0.1)
+        print('optimization running in process', pid)
+        test.run_optimization_single_timestep(tee=tee)
+        I_res = test.export_I_results()
+        queue.put(I_res, block=False)
+        test._store_results()
+        test._prepare_next_timestep()
+        test._setup_model()
+        #time.sleep(0.1)
 
     #test.plot_results(marker=marker)
 
 
-def func_sim(queue, lock):
-    for t in range(t_steps):
-        with lock as l:
-            wb_data = queue.get()
-            sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
-            #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
-            #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
-            #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
-            #plt.show()
+def func_sim(queue):
+    pid = os.getpid()
+    # runs faster than optimization, so dont used fixed number => while true
+    #for t in range(t_steps):
+    while True:
+        print('simulation running in process', pid)
+        try:
+            wb_data = queue.get(block=False)
+            t_counter += 1
+            print('#########################################')
+        except:
+            print('no new data, will use old')
+        # eigentlich nur mit den ergebnissen des ersten timestep vom aktuellen
+        # horizont
+        sim_handler_1.run_GLO_sim(hh_data, wb_data, timesteps=1)
+        #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
+        #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
+        #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
+        #plt.show()
 
 
 
 if __name__ == '__main__':
-    p_opt = mp.Process(target=func_opt, kwargs={'tee': False, 'marker': 'x', 'queue': queue, 'lock': lock})
-    p_sim = mp.Process(target=func_sim, args=(queue, lock))
+    p_opt = mp.Process(target=func_opt, kwargs={'tee': False, 'marker': 'x', 'queue': queue})
+    p_sim = mp.Process(target=func_sim, args=(queue,))
     p_opt.start()
-    time.sleep(3)
+    # while True:
+    #     #time.sleep(0.1)
+    #     # erst mal schauen, ob das erste Ergebnis der Optimierung da ist ...
+    #     if not queue.empty():
+    #         break
+
+    # ... erst dann die Simulation starten
     p_sim.start()
     p_opt.join()
     p_sim.join()
