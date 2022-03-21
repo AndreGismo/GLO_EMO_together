@@ -11,23 +11,23 @@ from household import Household as HH
 import matplotlib.pyplot as plt
 
 #### GridLineOptimizer ####################################################
-resolution = 10
-buses = 6
-bevs = 6
+resolution = 15
+buses = 40
+bevs = 40
 bev_lst = list(range(bevs))
 bus_lst = list(range(buses))
-s_trafo = 150  #kVA
+s_trafo = 250  #kVA
 
 # BEVs
-home_buses = [0, 1, 2, 3, 4, 5]
-start_socs = [20, 20, 30, 20, 25, 40]
-target_socs = [80, 70, 80, 90, 80, 70]
-target_times = [10, 16, 18, 18, 17, 20]
-start_times = [2, 2, 2, 2, 2, 2]
-bat_energies = [50, 50, 50, 50, 50, 50]
+home_buses = [i for i in range(bevs)]
+start_socs = [30 - random.randint(-10, 10) for _ in range(bevs)]
+target_socs = [80 - random.randint(-20, 20) for _ in range(bevs)]
+target_times = [19 - random.randint(-4, 4) for _ in range(bevs)]
+start_times = [2 for _ in range(bevs)]
+bat_energies = [50 for _ in range(bevs)]
 
 # Households
-ann_dems = [3000, 3500, 3000, 4000, 3000, 3000]
+ann_dems = [3500 for _ in range(buses)]
 
 # BEVs erzeugen
 bev_list = []
@@ -42,14 +42,15 @@ for car in bev_lst:
 household_list = []
 for bus in bus_lst:
     household = HH(home_bus=bus, annual_demand=ann_dems[bus], resolution=resolution)
-    household.raise_demand(11, 19, 23500)
+    household.raise_demand(11, 19, 2000)
     household_list.append(household)
 
 test = GLO(number_buses=buses, bevs=bev_list, resolution=resolution, s_trafo_kVA=s_trafo,
-           households=household_list, horizon_width=24)
+           households=household_list, horizon_width=24, impedance=0.004)
 
 test.run_optimization_single_timestep(tee=True)
-test.plot_results(marker='o')
+test.plot_all_results(marker='x', legend=False, save=True, usetex=True)
+#test.plot_I_results(marker='x', legend=False, save=True, usetex=True)
 
 # export grid as excel
 grid_excel_file = 'optimized_grid'
@@ -59,7 +60,7 @@ hh_data = test.export_household_profiles()
 wb_data = test.export_I_results()
 
 
-system_1 = Low_Voltage_System(line_type='NAYY 4x120 SE',transformer_type="0.25 MVA 10/0.4 kV")
+system_1 = Low_Voltage_System(line_type='NAYY 4x120 SE', transformer_type="0.25 MVA 10/0.4 kV")
 system_1.grid_from_GLO('grids/optimized_grid.xlsx', grid_specs)
 
 sim_handler_1 = Simulation_Handler(system_1,
@@ -67,7 +68,7 @@ sim_handler_1 = Simulation_Handler(system_1,
                                     end_minute=60 * 12 + 24 * 60,
                                     rapid=False)
 
-sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution))
-sim_handler_1.plot_EMO_sim_results(freq=resolution, element='buses')
-sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
-sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
+sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution), parallel=False)
+sim_handler_1.plot_EMO_sim_results(freq=resolution, element='buses', legend=False, marker='x', save=True, use_tex=True)
+sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines', legend=False, marker='x', save=True, use_tex=True)
+sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo', legend=False, marker='x', save=True, use_tex=True)

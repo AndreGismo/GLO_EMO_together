@@ -418,7 +418,25 @@ class Simulation_Handler():
         print("Simulation finished (voltage controls="+str(voltage_control)+', rapid='+str(self.rapid)+')')
 
 
-    def run_GLO_sim(self, household_data, wallbox_data, timesteps):
+    def get_results(sim_func):
+        def inner(*args, **kwargs):
+            sim_func(*args, **kwargs)
+            if kwargs['parallel']:
+                # args[0] to access self
+                #args[0].print_hi()
+                pass
+
+        return inner
+
+
+    def print_hi(self):
+        self.currents = {num: i for num, i in enumerate(self.res_GLO_sim['lines'].values())}
+        self.voltages = {num: u for num, u in enumerate(self.res_GLO_sim['buses'].values())}
+        print(self.voltages)
+
+
+    @get_results
+    def run_GLO_sim(self, household_data, wallbox_data, timesteps, parallel):
         """ By André
         runs a simulation according to the data and grid the GLO was optimizing for
         and stores results (line loading, bus voltage, transformer loading) as an
@@ -454,37 +472,61 @@ class Simulation_Handler():
             self.res_GLO_sim['trafo'].append(self.system.grid.res_trafo.loc[0, 'loading_percent'])
 
 
-    def plot_EMO_sim_results(self, freq, element='buses'):
-        fig, ax = plt.subplots(1, 1, figsize=(15, 7))
+    def plot_EMO_sim_results(self, freq, element='buses', legend=True, marker='o', save=False,
+                             use_tex=False):
+        if use_tex:
+            plt.rcParams['text.usetex'] = True
+
+        fig, ax = plt.subplots(1, 1, figsize=(15, 5))
         length = len(self.res_GLO_sim['trafo'])
         date_range = pd.date_range(start='2022', freq=str(freq)+'min', periods=length)
         if element == 'buses':
             for elm_nr in self.res_GLO_sim[element]:
                 ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Spannung an Bus {}'.format(elm_nr-1),
-                         marker='o')
-            ax.set_ylabel('Knotenspannung [V]')
-            ax.set_xlabel('Zeitpunkt [MM-TT hh]')
-            ax.set_title('Knotenspannungen über der Zeit')
+                         marker=marker)
+            ax.set_ylabel('Knotenspannung [V]', fontsize=17)
+            ax.set_xlabel('Zeitpunkt [MM-TT hh]', fontsize=17)
+            ax.set_title('Knotenspannungen über der Zeit', fontsize=20)
             ax.grid()
-            ax.legend()
+            if legend:
+                ax.legend()
+
+            if save:
+                fig.savefig('res_sim_buses.pdf', bbox_inches='tight')
 
         elif element == 'lines':
             for elm_nr in self.res_GLO_sim[element]:
                 ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Auslastung von Leitung {}'.format(elm_nr),
-                         marker='o')
-            ax.set_ylabel('Auslastung [%]')
-            ax.set_xlabel('Zeitpunkt [MM-TT hh]')
-            ax.set_title('Auslastung der Leitungen über der Zeit')
+                         marker=marker)
+            if use_tex:
+                ax.set_ylabel(r'Auslastung [\%]', fontsize=17)
+
+            else:
+                ax.set_ylabel('Auslastung [%]', fontsize=17)
+
+            ax.set_xlabel('Zeitpunkt [MM-TT hh]', fontsize=17)
+            ax.set_title('Auslastung der Leitungen über der Zeit', fontsize=20)
             ax.grid()
-            ax.legend()
+            if legend:
+                ax.legend()
+
+            if save:
+                fig.savefig('res_sim_lines.pdf', bbox_inches='tight')
 
         elif element == 'trafo':
-            ax.plot(date_range, self.res_GLO_sim[element], marker='o')
-            ax.set_ylabel('Auslastung [%]')
-            ax.set_xlabel('Zeitpunkt [MM-TT hh]')
-            ax.set_title('Auslastung des Transformators über der Zeit')
+            ax.plot(date_range, self.res_GLO_sim[element], marker=marker)
+            if use_tex:
+                ax.set_ylabel(r'Auslastung [\%]', fontsize=17)
+
+            else:
+                ax.set_ylabel('Auslastung [%]', fontsize=17)
+
+            ax.set_xlabel('Zeitpunkt [MM-TT hh]', fontsize=17)
+            ax.set_title('Auslastung des Transformators über der Zeit', fontsize=20)
             ax.grid()
-            #ax.legend()
+
+            if save:
+                fig.savefig('res_sim_trafo.pdf', bbox_inches='tight')
 
 
 
