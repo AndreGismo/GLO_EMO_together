@@ -132,7 +132,7 @@ def func_sim(queue):
             break
 
         # run simulation with only the results for the first timestep
-        sim_handler_1.run_GLO_sim(hh_data, res_I, timesteps=1)
+        sim_handler_1.run_GLO_sim(hh_data, res_I, timesteps=1, parallel=True)
         time.sleep(1)
         #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
         #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
