@@ -93,7 +93,7 @@ def func_opt(tee, marker, queue):
         test._prepare_next_timestep()
         test._setup_model()
         #t_counter += 1 # is ja eigener Prozess, sieht die global t_counter von main gar nicht!
-        time.sleep(3)
+        time.sleep(1.5)
 
     queue.put('done')
 
@@ -126,14 +126,14 @@ def func_sim(queue):
             print('received new results!')
             last_I_res = res_I
             #t_counter += 1
-            print(t_counter)
+            #print(t_counter)
 
         if res_I == 'done':
             break
 
         # run simulation with only the results for the first timestep
-        sim_handler_1.run_GLO_sim(hh_data, res_I, timesteps=1, parallel=True)
-        time.sleep(1)
+        sim_handler_1.run_GLO_sim(hh_data, res_I, timesteps=2, parallel=True)
+        time.sleep(0.5)
         #sim_handler_1.plot_EMO_sim_results(resolution, element='buses')
         #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='lines')
         #sim_handler_1.plot_EMO_sim_results(freq=resolution, element='trafo')
@@ -148,3 +148,8 @@ if __name__ == '__main__':
 
     p_opt.join()
     print('done!')
+    # hier müsste jetzt eigentlich nur vom letzten timestep die Ergebnisse der simulation
+    # drin sein => noch Methode, die nach jedem Simulationsdurchlauf die Ergebnisse vom
+    # jeweils ersten timestep abfragt und speichert
+    plt.plot(range(len(sim_handler_1.res_GLO_sim_trafo)), sim_handler_1.res_GLO_sim_U[3])
+    plt.show()

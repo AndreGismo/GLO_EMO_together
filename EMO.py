@@ -331,6 +331,18 @@ class Simulation_Handler():
         self.rapid=rapid
         # uncomment for data loading from GLO
         #self.create_timelines(self.rapid)  # timelines for households from .mat-file
+        # results of the simulation run with GLO (run_GLO_sim) => predicted values
+        # starting from the current timestep
+        self.res_GLO_sim = {'buses': {i: [] for i in self.system.grid.bus.index if i > 1},
+                            'lines': {i: [] for i in self.system.grid.line.index},
+                            'trafo': []}
+
+        # store the first values of the results of each timestep here
+        # => for plotting afterwards
+        self.res_GLO_sim_I = {bus: [] for bus in self.res_GLO_sim['buses']}
+        self.res_GLO_sim_U = {line: [] for line in self.res_GLO_sim['lines']}
+        self.res_GLO_sim_trafo = []
+
         
     def create_timelines(self,rapid):
         if rapid:
@@ -423,16 +435,28 @@ class Simulation_Handler():
             sim_func(*args, **kwargs)
             if kwargs['parallel']:
                 # args[0] to access self
-                #args[0].print_hi()
-                pass
+                args[0].get_first_results()
+
 
         return inner
 
 
-    def print_hi(self):
-        self.currents = {num: i for num, i in enumerate(self.res_GLO_sim['lines'].values())}
-        self.voltages = {num: u for num, u in enumerate(self.res_GLO_sim['buses'].values())}
-        print(self.voltages)
+    def get_first_results(self):
+        #self.currents = {num: i for num, i in enumerate(self.res_GLO_sim['lines'].values())}
+        #self.voltages = {num: u for num, u in enumerate(self.res_GLO_sim['buses'].values())}
+        # grab the value of the first timestep of each bus/node and append it
+        # to results list (that can late be plotted)
+        for line in self.res_GLO_sim['lines']:
+            #print(self.res_GLO_sim['lines'])
+            #print(line)
+            self.res_GLO_sim_I[line+2].append(self.res_GLO_sim['lines'][line][1])
+
+        for bus in self.res_GLO_sim['buses']:
+            #print(self.res_GLO_sim['buses'])
+            self.res_GLO_sim_U[bus-2].append(self.res_GLO_sim['buses'][bus][1])
+
+        self.res_GLO_sim_trafo.append(self.res_GLO_sim['trafo'][1])
+
 
 
     @get_results
@@ -449,6 +473,7 @@ class Simulation_Handler():
         self.res_GLO_sim = {'buses': {i: [] for i in self.system.grid.bus.index if i > 1},
                             'lines': {i: [] for i in self.system.grid.line.index},
                             'trafo': []}
+
         for step in range(timesteps):
             # set household loads
             for bus in self.system.grid.load.index:
