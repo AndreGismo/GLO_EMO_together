@@ -510,12 +510,13 @@ class Simulation_Handler():
         :return:
         """
         for step in range(timesteps):
+            print(step)
             # set the household loads
             for bus in self.system.grid.load.index:
                 self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step] * 1e-6
             # query the loading power of each bev at current timestep
             for bev in bevs:
-                self.system.grid.load.loc[bev.home_bus, 'p_mw'] = bev.get_current_power(step)
+                self.system.grid.load.loc[bev.home_bus, 'p_mw'] = bev.get_current_power(step) * 1e-3
 
             # now run the simulation
             pp.runpp(self.system.grid, max_iterations=30)
