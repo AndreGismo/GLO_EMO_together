@@ -34,6 +34,7 @@ if True:  # Import
     #sys.path.append('C:/Users/Hotz/Dropbox/Weitere/Programmierung')
     import PSL
     from matplotlib import pyplot as plt
+    import matplotlib.dates as mdates
     
     
 class Household(): 
@@ -497,21 +498,66 @@ class Simulation_Handler():
             self.res_GLO_sim['trafo'].append(self.system.grid.res_trafo.loc[0, 'loading_percent'])
 
 
-    def plot_EMO_sim_results(self, freq, element='buses', legend=True, marker='o', save=False,
-                             use_tex=False):
-        if use_tex:
-            plt.rcParams['text.usetex'] = True
+    def run_unoptimized_sim(self, household_data, bevs, timesteps):
+        """By André
+        run simulation according to unoptimized BEV loading timelines. The generation
+        of the loading timeline of each BEV is done inside the BatteryElectricVehicle
+        class. These results are passed to the simulation here
 
-        fig, ax = plt.subplots(1, 1, figsize=(15, 5))
+        :param household_data: uncontrollable loads from households
+        :param bevs: BatteryElectricVehicle objects
+        :param timestpes:
+        :return:
+        """
+        for step in range(timesteps):
+            # set the household loads
+            for bus in self.system.grid.load.index:
+                self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step] * 1e-6
+            # query the loading power of each bev at current timestep
+            for bev in bevs:
+                self.system.grid.load.loc[bev.home_bus, 'p_mw'] = bev.get_current_power(step)
+
+            # now run the simulation
+            pp.runpp(self.system.grid, max_iterations=30)
+
+            # store the results of this simulation step
+            for line_nr in self.system.grid.line.index:
+                self.res_GLO_sim['lines'][line_nr].append(self.system.grid.res_line.loc[line_nr, 'loading_percent'])
+
+            for bus_nr in self.system.grid.bus.index:
+                if bus_nr > 1: # skip first two buses
+                    self.res_GLO_sim['buses'][bus_nr].append(self.system.grid.res_bus.loc[bus_nr, 'vm_pu']*400)
+
+            self.res_GLO_sim['trafo'].append(self.system.grid.res_trafo.loc[0, 'loading_percent'])
+
+
+    def plot_EMO_sim_results(self, freq, element='buses', legend=True, marker='o', save=False,
+                             usetex=False, compact_x=False):
+        if usetex:
+            plt.rcParams['text.usetex'] = True
+            plt.rcParams['font.family'] = 'serif'
+            plt.rcParams['grid.linewidth'] = 0.4
+            plt.rcParams['lines.linewidth'] = 1
+            plt.rcParams['legend.fontsize'] = 8
+            plt.rcParams['font.size'] = 11
+
+        if compact_x:
+            x_fmt = mdates.DateFormatter('%H')
+
+        fig, ax = plt.subplots(1, 1, figsize=(6.5, 1.75))
         length = len(self.res_GLO_sim['trafo'])
         date_range = pd.date_range(start='2022', freq=str(freq)+'min', periods=length)
         if element == 'buses':
             for elm_nr in self.res_GLO_sim[element]:
                 ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Spannung an Bus {}'.format(elm_nr-1),
                          marker=marker)
-            ax.set_ylabel('Knotenspannung [V]', fontsize=17)
-            ax.set_xlabel('Zeitpunkt [MM-TT hh]', fontsize=17)
-            ax.set_title('Knotenspannungen über der Zeit', fontsize=20)
+            ax.set_ylabel('Knotenspannung [V]')
+            if compact_x:
+                ax.xaxis.set_major_formatter(x_fmt)
+                ax.set_xlabel('Time [hh]')
+            else:
+                ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            #ax.set_title('Knotenspannungen über der Zeit', fontsize=20)
             ax.grid()
             if legend:
                 ax.legend()
@@ -523,14 +569,18 @@ class Simulation_Handler():
             for elm_nr in self.res_GLO_sim[element]:
                 ax.plot(date_range, self.res_GLO_sim[element][elm_nr], label='Auslastung von Leitung {}'.format(elm_nr),
                          marker=marker)
-            if use_tex:
-                ax.set_ylabel(r'Auslastung [\%]', fontsize=17)
+            if usetex:
+                ax.set_ylabel(r'Auslastung [\%]')
 
             else:
-                ax.set_ylabel('Auslastung [%]', fontsize=17)
+                ax.set_ylabel('Auslastung [%]')
 
-            ax.set_xlabel('Zeitpunkt [MM-TT hh]', fontsize=17)
-            ax.set_title('Auslastung der Leitungen über der Zeit', fontsize=20)
+            if compact_x:
+                ax.xaxis.set_major_formatter(x_fmt)
+                ax.set_xlabel('Time [hh]')
+            else:
+                ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            #ax.set_title('Auslastung der Leitungen über der Zeit', fontsize=20)
             ax.grid()
             if legend:
                 ax.legend()
@@ -540,14 +590,17 @@ class Simulation_Handler():
 
         elif element == 'trafo':
             ax.plot(date_range, self.res_GLO_sim[element], marker=marker)
-            if use_tex:
-                ax.set_ylabel(r'Auslastung [\%]', fontsize=17)
+            if usetex:
+                ax.set_ylabel(r'Auslastung [\%]')
 
             else:
-                ax.set_ylabel('Auslastung [%]', fontsize=17)
-
-            ax.set_xlabel('Zeitpunkt [MM-TT hh]', fontsize=17)
-            ax.set_title('Auslastung des Transformators über der Zeit', fontsize=20)
+                ax.set_ylabel('Auslastung [%]')
+            if compact_x:
+                ax.xaxis.set_major_formatter(x_fmt)
+                ax.set_xlabel('Time [hh]')
+            else:
+                ax.set_xlabel('Zeitpunkt [MM-TT hh]')
+            #ax.set_title('Auslastung des Transformators über der Zeit', fontsize=20)
             ax.grid()
 
             if save:
