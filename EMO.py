@@ -516,7 +516,7 @@ class Simulation_Handler():
                 self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step] * 1e-6
             # query the loading power of each bev at current timestep
             for bev in bevs:
-                self.system.grid.load.loc[bev.home_bus, 'p_mw'] = bev.get_current_power(step) * 1e-3
+                self.system.grid.load.loc[bev.home_bus, 'p_mw'] += bev.get_current_power(step) * 1e-3
 
             # now run the simulation
             pp.runpp(self.system.grid, max_iterations=30)
@@ -533,7 +533,7 @@ class Simulation_Handler():
 
 
     def plot_EMO_sim_results(self, freq, element='buses', legend=True, marker='o', save=False,
-                             usetex=False, compact_x=False):
+                             usetex=False, compact_x=False, name_ext='', compare=False):
         if usetex:
             plt.rcParams['text.usetex'] = True
             plt.rcParams['font.family'] = 'serif'
@@ -564,7 +564,7 @@ class Simulation_Handler():
                 ax.legend()
 
             if save:
-                fig.savefig('res_sim_buses.pdf', bbox_inches='tight')
+                fig.savefig(f'res_sim_buses{name_ext}.pdf', bbox_inches='tight')
 
         elif element == 'lines':
             for elm_nr in self.res_GLO_sim[element]:
@@ -587,10 +587,17 @@ class Simulation_Handler():
                 ax.legend()
 
             if save:
-                fig.savefig('res_sim_lines.pdf', bbox_inches='tight')
+                fig.savefig(f'res_sim_lines{name_ext}.pdf', bbox_inches='tight')
 
         elif element == 'trafo':
-            ax.plot(date_range, self.res_GLO_sim[element], marker=marker)
+            if not compare:
+                ax.plot(date_range, self.res_GLO_sim[element], marker=marker)
+            else:
+                ax.plot(date_range, self.res_GLO_sim[element], marker=marker, label='ohne Optimierung')
+                ax.plot(date_range, self.last_results[element], marker=marker, label='mit Optimierung')
+                if legend:
+                    ax.legend()
+
             if usetex:
                 ax.set_ylabel(r'Auslastung [\%]')
 
@@ -605,7 +612,40 @@ class Simulation_Handler():
             ax.grid()
 
             if save:
-                fig.savefig('res_sim_trafo.pdf', bbox_inches='tight')
+                fig.savefig(f'res_sim_trafo{name_ext}.pdf', bbox_inches='tight')
+
+
+    def store_sim_results(self):
+        """
+        store the results of the previous simulation as csv.
+        :return: None
+        """
+        buses_df = pd.DataFrame(self.res_GLO_sim['buses'])
+        lines_df = pd.DataFrame(self.res_GLO_sim['lines'])
+        trafo_df = pd.DataFrame(self.res_GLO_sim['trafo'])
+
+        # save the to csv
+        buses_df.to_csv('res_buses.csv', index=False)
+        lines_df.to_csv('res_lines.csv', index=False)
+        trafo_df.to_csv('res_trafo.csv', index=False)
+
+
+    def load_sim_results(self):
+        buses_df = pd.read_csv('res_buses.csv')
+        lines_df = pd.read_csv('res_lines.csv')
+        trafo_df = pd.read_csv('res_trafo.csv')
+
+        # store as dict, similar to self.res_GLO_sim
+        self.last_results = {'buses': {int(i): [buses_df.loc[j, i] for j in buses_df.index] for i in buses_df.columns},
+                             'lines': {int(i): [lines_df.loc[j, i] for j in lines_df.index] for i in lines_df.columns},
+                             'trafo': [trafo_df.loc[j, '0'] for j in trafo_df.index]}
+
+
+    def reset_GLO_sim_results(self):
+        # reset the res_GLO_sim dict
+        self.res_GLO_sim = {'buses': {i: [] for i in self.system.grid.bus.index if i > 1},
+                            'lines': {i: [] for i in self.system.grid.line.index},
+                            'trafo': []}
 
 
 
