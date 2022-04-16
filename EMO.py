@@ -315,7 +315,7 @@ class Low_Voltage_System():
         for i in range(2, len(grid_data['Lines'])+2):
             pp.create_line_from_parameters(grid, from_bus=i-1, to_bus=i, length_km=0.015,
                                            r_ohm_per_km=r_spec, name='line '+str(i-1)+'-'+str(i),
-                                           x_ohm_per_km=0, c_nf_per_km=0, max_i_ka=i_max_line)
+                                           x_ohm_per_km=0, c_nf_per_km=0, max_i_ka=i_max_line/1000)
 
         self.grid = grid
 
@@ -498,7 +498,7 @@ class Simulation_Handler():
             self.res_GLO_sim['trafo'].append(self.system.grid.res_trafo.loc[0, 'loading_percent'])
 
 
-    def run_unoptimized_sim(self, household_data, bevs, timesteps):
+    def run_unoptimized_sim(self, household_data, bevs, timesteps, control=False):
         """By André
         run simulation according to unoptimized BEV loading timelines. The generation
         of the loading timeline of each BEV is done inside the BatteryElectricVehicle
@@ -509,6 +509,7 @@ class Simulation_Handler():
         :param timestpes:
         :return:
         """
+        cap = 1
         for step in range(timesteps):
             print(step)
             # set the household loads
@@ -516,7 +517,7 @@ class Simulation_Handler():
                 self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step] * 1e-6
             # query the loading power of each bev at current timestep
             for bev in bevs:
-                self.system.grid.load.loc[bev.home_bus, 'p_mw'] += bev.get_current_power(step) * 1e-3
+                self.system.grid.load.loc[bev.home_bus, 'p_mw'] += bev.get_current_power(step, cap=cap) * 1e-3
 
             # now run the simulation
             pp.runpp(self.system.grid, max_iterations=30)
@@ -530,6 +531,48 @@ class Simulation_Handler():
                     self.res_GLO_sim['buses'][bus_nr].append(self.system.grid.res_bus.loc[bus_nr, 'vm_pu']*400)
 
             self.res_GLO_sim['trafo'].append(self.system.grid.res_trafo.loc[0, 'loading_percent'])
+
+            # call the controller P(U)
+            if control:
+                #cap = self.control_power(thres=0.98, cap=0.5)
+                cap = self.alt_control_power(thres_lo=0.94, thres_hi=0.98, last_cap=cap)
+
+
+    def control_power(self, thres, cap):
+        """
+        run P(U) controlling. Check the voltages at each node, if one falls below critical value
+        than lower each controllable load by a certain amount
+        :param thres: critical value for node voltage
+        :param cap: amount to cap loads
+        :return:
+        """
+        # check all the node voltages
+        failed = False
+        for bus in self.system.grid.res_bus.index:
+            if self.system.grid.res_bus.loc[bus, 'vm_pu'] < thres:
+                print(f"voltage too low: {self.system.grid.res_bus.loc[bus, 'vm_pu']*400}")
+                failed = True
+                #break
+
+        if failed:
+            return 1-cap
+        else:
+            return 1
+
+
+    def alt_control_power(self, thres_lo, thres_hi, last_cap):
+        if min([x for x in self.system.grid.res_bus.vm_pu]) < thres_lo:
+            new_cap = last_cap * (1 - 0.05)
+            return new_cap
+
+        elif min([x for x in self.system.grid.res_bus.vm_pu]) > thres_hi:
+            new_cap = last_cap * (1 + 0.02)
+            if new_cap >= 1:
+                new_cap = 1
+            return new_cap
+
+        else:
+            return last_cap
 
 
     def plot_EMO_sim_results(self, freq, element='buses', legend=True, marker='o', save=False,
