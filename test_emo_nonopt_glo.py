@@ -11,27 +11,27 @@ from household import Household as HH
 import matplotlib.pyplot as plt
 
 #### GridLineOptimizer ####################################################
-resolution = 5
-buses = 6
-bevs = 6
+resolution = 3
+buses = 40
+bevs = 40
 bev_lst = list(range(bevs))
 bus_lst = list(range(buses))
-s_trafo = 25 #kVA
+s_trafo = 250 #kVA
 
 # BEVs
-#home_buses = [i for i in range(bevs)]
-#start_socs = [30 - random.randint(-10, 10) for _ in range(bevs)]
-#target_socs = [80 - random.randint(-20, 20) for _ in range(bevs)]
-#target_times = [19 - random.randint(-4, 4) for _ in range(bevs)]
-#start_times = [2 for _ in range(bevs)]
-#bat_energies = [50 for _ in range(bevs)]
+home_buses = [i for i in range(bevs)]
+start_socs = [30 - random.randint(-10, 10) for _ in range(bevs)]
+target_socs = [80 - random.randint(-20, 20) for _ in range(bevs)]
+target_times = [19 - random.randint(-4, 4) for _ in range(bevs)]
+start_times = [12 - random.randint(-2, 2) for _ in range(bevs)]
+bat_energies = [50 for _ in range(bevs)]
 
-home_buses = [0, 1, 2, 3, 4, 5]
-start_socs = [20, 20, 20, 20, 20, 20]
-target_socs = [100, 100, 100, 100, 100, 100]
-target_times = [14, 16, 18, 20, 18, 20]
-start_times = [10, 12, 14, 14, 12, 14]
-bat_energies = [50, 50, 50, 50, 50, 50]
+# home_buses = [0, 1, 2, 3, 4, 5]
+# start_socs = [20, 20, 20, 20, 20, 20]
+# target_socs = [100, 100, 100, 100, 100, 100]
+# target_times = [14, 16, 18, 20, 18, 20]
+# start_times = [10, 12, 14, 14, 12, 14]
+# bat_energies = [50, 50, 50, 50, 50, 50]
 
 final_socs_unopt = []
 final_socs_opt = []
@@ -56,7 +56,7 @@ for bus in bus_lst:
     #household.raise_demand(11, 19, 1800)
     household_list.append(household)
 
-GLO.set_options('equal SOCs', 0)
+#GLO.set_options('equal SOCs', 0.05)
 
 test = GLO(number_buses=buses, bevs=bev_list, resolution=resolution, s_trafo_kVA=s_trafo,
            households=household_list, horizon_width=24, impedance=0.004)
@@ -85,6 +85,8 @@ sim_handler_1 = Simulation_Handler(system_1,
 sim_handler_1.run_GLO_sim(hh_data, wb_data, int(24*60/resolution), parallel=False)
 # store the results of the optimized
 sim_handler_1.store_sim_results()
+sim_handler_1.plot_EMO_sim_results(freq=resolution, element='buses', legend=False, marker=None,
+                                   save=True, usetex=True, compact_x=True)
 
 for bev in bev_list:
     final_socs_opt.append(test.optimization_model.SOC[int(24*60/resolution)-1, bev.home_bus].value)
@@ -105,7 +107,7 @@ sim_handler_2 = Simulation_Handler(system_2,
 
 #sim_handler_1.reset_GLO_sim_results()
 
-sim_handler_2.run_unoptimized_sim(hh_data, bev_list, int(24*60/resolution))
+sim_handler_2.run_unoptimized_sim(hh_data, bev_list, int(24*60/resolution), control=False)
 # load the results from the previous simulation
 sim_handler_2.load_sim_results()
 
