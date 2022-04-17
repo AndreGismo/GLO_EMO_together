@@ -14,14 +14,14 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 #### GridLineOptimizer ####################################################
-resolution = 1
+resolution = 5
 buses = 40
 bevs = 40
 bev_lst = list(range(bevs))
 bus_lst = list(range(buses))
 s_trafo = 250 #kVA
 
-runs = 1
+runs = 7
 
 for run in range(runs):
     random.seed(run)
@@ -139,7 +139,7 @@ opt_buses_df = []
 opt_lines_df = []
 opt_trafo_df = []
 
-for num in range(runs):
+for run in range(runs):
     opt_buses_df.append(pd.read_csv(f'results/res_buses_optimized_{run}.csv'))
     opt_lines_df.append(pd.read_csv(f'results/res_lines_optimized_{run}.csv'))
     opt_trafo_df.append(pd.read_csv(f'results/res_trafo_optimized_{run}.csv'))
@@ -157,7 +157,7 @@ for df in opt_buses_df:
 unopt_buses_df = []
 unopt_trafo_df = []
 
-for num in range(runs):
+for run in range(runs):
     unopt_buses_df.append(pd.read_csv(f'results/res_buses_unoptimized_{run}.csv'))
     unopt_trafo_df.append(pd.read_csv(f'results/res_trafo_unoptimized_{run}.csv'))
 
@@ -173,7 +173,7 @@ for df in unopt_trafo_df:
 contr_buses_df = []
 contr_trafo_df = []
 
-for num in range(runs):
+for run in range(runs):
     contr_buses_df.append(pd.read_csv(f'results/res_buses_unoptimized-controlled_{run}.csv'))
     contr_trafo_df.append(pd.read_csv(f'results/res_trafo_unoptimized-controlled_{run}.csv'))
 
