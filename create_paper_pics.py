@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 #### GridLineOptimizer ####################################################
-resolution = 5
+resolution = 6
 buses = 40
 bevs = 40
 bev_lst = list(range(bevs))
@@ -32,10 +32,6 @@ for run in range(runs):
     target_times = [19 - random.randint(-4, 4) for _ in range(bevs)]
     start_times = [12 - random.randint(-2, 2) for _ in range(bevs)]
     bat_energies = [50 for _ in range(bevs)]
-
-    print(start_times)
-    print(start_socs)
-
 
 
     # Households
@@ -60,7 +56,7 @@ for run in range(runs):
     #GLO.set_options('equal SOCs', 0.05)
 
     test = GLO(number_buses=buses, bevs=bev_list, resolution=resolution, s_trafo_kVA=s_trafo,
-               households=household_list, horizon_width=24, impedance=0.004)
+               households=household_list, horizon_width=24)
 
     test.run_optimization_single_timestep(tee=False)
 
@@ -186,33 +182,59 @@ for df in contr_buses_df:
     big_contr_buses_df = pd.concat([big_contr_buses_df, df], axis=0)
 
 
-fig, ax = plt.subplots(1, 1, figsize=(6.5, 1.75))
+fig, ax = plt.subplots(2, 1, figsize=(6.5, 4), sharex=True)
 #sort_values(by='0', ascending=False)
-ax.plot(range(len(big_opt_trafo_df)), big_opt_trafo_df.sort_values(by='0', ascending=False).loc[:, '0'],
-        label='optimiert')
-ax.plot(range(len(big_opt_trafo_df)), big_unopt_trafo_df.sort_values(by='0', ascending=False).loc[:, '0'],
-        label='unoptimiert')
-ax.plot(range(len(big_opt_trafo_df)), big_contr_trafo_df.sort_values(by='0', ascending=False).loc[:, '0'],
-        label='unoptimiert, geregelt')
-ax.set_xlabel('Anzahl Minuten')
-ax.set_ylabel('Auslastung [\%]')
-ax.legend()
-ax.grid()
+ax[0].plot(range(len(big_opt_trafo_df)), big_opt_trafo_df.sort_values(by='0', ascending=False).loc[:, '0'],
+        label='optimised')
+ax[0].plot(range(len(big_opt_trafo_df)), big_unopt_trafo_df.sort_values(by='0', ascending=False).loc[:, '0'],
+        label='unoptimised')
+ax[0].plot(range(len(big_opt_trafo_df)), big_contr_trafo_df.sort_values(by='0', ascending=False).loc[:, '0'],
+        label='unoptimised, controlled')
+#ax[0].set_xlabel('Number of minutes')
+ax[0].set_ylabel('Transformer loading [\%]')
+# big_opt_buses_df.sort_values(by='41', ascending=True).loc[:, '41']
+ax[1].plot(range(len(big_opt_trafo_df)), big_opt_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
+        label='optimised')
+ax[1].plot(range(len(big_opt_trafo_df)), big_unopt_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
+        label='unoptimised')
+ax[1].plot(range(len(big_opt_trafo_df)), big_contr_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
+        label='unoptimised, controlled')
+ax[1].set_xlabel('Timesteps [hours]')
+ax[1].set_ylabel('Node voltage [V]')
+ax[0].legend()
+ax[1].legend()
+ax[0].grid()
+ax[1].grid()
+pos= ax[1].get_xticks()[1:-1]
+ax[1].set_xticks(pos, [int(val*resolution/60) for val in pos])
 
-fig.savefig('trafo_comparison.pdf', bbox_inches='tight')
+ax[0].axhline(y=100, color='red', linestyle='--', linewidth=0.7)
+ax[1].axhline(y=360, color='red', linestyle='--', linewidth=0.7)
 
+#how many minutes under 360V?
+crit_v_unopt = len(big_unopt_buses_df.loc[big_unopt_buses_df['41']<360, '41'])
+crit_v_contr = len(big_contr_buses_df.loc[big_contr_buses_df['41']<360, '41'])
+crit_p_unopt = len(big_unopt_trafo_df.loc[big_unopt_trafo_df['0']>100, '0'])
 
-fig1, ax1 = plt.subplots(1, 1, figsize=(6.5, 1.75))
-#sort_values(by='0', ascending=False)
-ax1.plot(range(len(big_opt_trafo_df)), big_opt_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
-        label='optimiert')
-ax1.plot(range(len(big_opt_trafo_df)), big_unopt_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
-        label='unoptimiert')
-ax1.plot(range(len(big_opt_trafo_df)), big_contr_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
-        label='unoptimiert, geregelt')
-ax1.set_xlabel('Anzahl Minuten')
-ax1.set_ylabel('Spannung [V]')
-ax1.legend()
-ax1.grid()
+ax[0].axvline(x=crit_p_unopt, ymax=0.59, color='red', linestyle='--', linewidth=0.7)
 
-fig1.savefig('buses_comparison.pdf', bbox_inches='tight')
+ax[1].axvline(x=crit_v_unopt, ymax=0.63, color='red', linestyle='--', linewidth=0.7)
+ax[1].axvline(x=crit_v_contr, ymax=0.63, color='red', linestyle='--', linewidth=0.7)
+
+fig.savefig('trafo-bus_comparison.pdf', bbox_inches='tight')
+
+#
+# fig1, ax1 = plt.subplots(1, 1, figsize=(6.5, 1.75))
+# #sort_values(by='0', ascending=False)
+# ax1.plot(range(len(big_opt_trafo_df)), big_opt_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
+#         label='optimiert')
+# ax1.plot(range(len(big_opt_trafo_df)), big_unopt_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
+#         label='unoptimiert')
+# ax1.plot(range(len(big_opt_trafo_df)), big_contr_buses_df.sort_values(by='41', ascending=True).loc[:, '41'],
+#         label='unoptimiert, geregelt')
+# ax1.set_xlabel('Anzahl Minuten')
+# ax1.set_ylabel('Spannung [V]')
+# ax1.legend()
+# ax1.grid()
+#
+# fig1.savefig('buses_comparison.pdf', bbox_inches='tight')
