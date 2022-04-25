@@ -277,10 +277,12 @@ class Low_Voltage_System():
         v_mv = 20
         v_lv = 0.4
         s_trafo = GLO_grid_params['S transformer']
-        line_impedance = GLO_grid_params['line impedance']
-        i_max_line = GLO_grid_params['i line max']
+        line_specific_impedances = GLO_grid_params['line specific impedances']
+        line_lenghts = GLO_grid_params['line lenghts']
+        line_capacities = GLO_grid_params['line capacities']
+        #i_max_line = GLO_grid_params['i line max']
         # assume all lines to be 15m for calculating R/l
-        r_spec = line_impedance*1000/15 # /1000 since pandas expects length in km
+        #r_spec = line_impedance*1000/15 # /1000 since pandas expects length in km
 
         if ideal:
             vkr = 0
@@ -313,9 +315,10 @@ class Low_Voltage_System():
 
         # create all the lines
         for i in range(2, len(grid_data['Lines'])+2):
-            pp.create_line_from_parameters(grid, from_bus=i-1, to_bus=i, length_km=0.015,
-                                           r_ohm_per_km=r_spec, name='line '+str(i-1)+'-'+str(i),
-                                           x_ohm_per_km=0, c_nf_per_km=0, max_i_ka=i_max_line/1000)
+            pp.create_line_from_parameters(grid, from_bus=i-1, to_bus=i, length_km=line_lenghts[i-2]/1000,
+                                           r_ohm_per_km=line_specific_impedances[i-2]*1000,
+                                           name='line '+str(i-1)+'-'+str(i),
+                                           x_ohm_per_km=0, c_nf_per_km=0, max_i_ka=line_capacities[i-2]/1000)
 
         self.grid = grid
 
@@ -511,7 +514,7 @@ class Simulation_Handler():
         """
         cap = 1
         for step in range(timesteps):
-            print(step)
+            #print(step)
             # set the household loads
             for bus in self.system.grid.load.index:
                 self.system.grid.load.loc[bus, 'p_mw'] = household_data[bus][step] * 1e-6
@@ -550,7 +553,7 @@ class Simulation_Handler():
         failed = False
         for bus in self.system.grid.res_bus.index:
             if self.system.grid.res_bus.loc[bus, 'vm_pu'] < thres:
-                print(f"voltage too low: {self.system.grid.res_bus.loc[bus, 'vm_pu']*400}")
+                #print(f"voltage too low: {self.system.grid.res_bus.loc[bus, 'vm_pu']*400}")
                 failed = True
                 #break
 
@@ -658,7 +661,7 @@ class Simulation_Handler():
                 fig.savefig(f'res_sim_trafo{name_ext}.pdf', bbox_inches='tight')
 
 
-    def store_sim_results(self):
+    def store_sim_results(self, name_extension=''):
         """
         store the results of the previous simulation as csv.
         :return: None
@@ -668,9 +671,9 @@ class Simulation_Handler():
         trafo_df = pd.DataFrame(self.res_GLO_sim['trafo'])
 
         # save the to csv
-        buses_df.to_csv('res_buses.csv', index=False)
-        lines_df.to_csv('res_lines.csv', index=False)
-        trafo_df.to_csv('res_trafo.csv', index=False)
+        buses_df.to_csv(f'results/res_buses{name_extension}.csv', index=False)
+        lines_df.to_csv(f'results/res_lines{name_extension}.csv', index=False)
+        trafo_df.to_csv(f'results/res_trafo{name_extension}.csv', index=False)
 
 
     def load_sim_results(self):
