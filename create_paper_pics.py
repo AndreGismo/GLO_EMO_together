@@ -181,6 +181,25 @@ big_contr_buses_df = pd.DataFrame()
 for df in contr_buses_df:
     big_contr_buses_df = pd.concat([big_contr_buses_df, df], axis=0)
 
+#### compare grid loading for different scenarios #############################
+big_opt_trafo_df_sorted = big_opt_trafo_df.sort_values(by='0', ascending=False, ignore_index=True)
+big_contr_trafo_df_sorted = big_contr_trafo_df.sort_values(by='0', ascending=False, ignore_index=True)
+load_diff_trafo = big_opt_trafo_df_sorted - big_contr_trafo_df_sorted
+#load_diff_trafo = load_diff_trafo.sort_values(by='0', ascending=False)
+
+fig0, ax0 = plt.subplots(1, 1, figsize=(6.5, 1.8))
+ax0.plot(range(len(load_diff_trafo)), load_diff_trafo.sort_values(by='0', ascending=False).loc[:, '0'])
+ax0.set_xlabel('Timesteps [hours]')
+ax0.set_ylabel('$\Delta$ transformer loading [\%]')
+mean_load_diff = load_diff_trafo.loc[:, '0'].mean()
+print(mean_load_diff)
+ax0.grid()
+ax0.axhline(y=mean_load_diff, linewidth=0.7, color='black', linestyle='--')
+pos = ax0.get_xticks()[1:-1]
+ax0.set_xticks(pos, [int(val*resolution/60) for val in pos])
+fig0.savefig('trafo-loading-comparison.pdf', bbox_inches='tight')
+
+
 
 fig, ax = plt.subplots(2, 1, figsize=(6.5, 4), sharex=True)
 #sort_values(by='0', ascending=False)
